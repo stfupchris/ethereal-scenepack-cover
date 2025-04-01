@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ethereal Logoless Scenepack Cover Creator</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #121212;
+            color: white;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .editor-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            width: 100%;
+            max-width: 1400px;
+            gap: 20px;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            background: #1e1e1e;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0px 4px 10px rgba(255, 255, 255, 0.1);
+            width: 350px;
+        }
+
+        .controls label {
+            font-size: 14px;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        .controls input, .controls select, .controls button {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            margin: 5px 0;
+            border: none;
+            border-radius: 5px;
+        }
+
+        .controls input, .controls select {
+            background: #2c2c2c;
+            color: white;
+            outline: none;
+        }
+
+        .controls button {
+            background: #007BFF;
+            color: white;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .controls button:hover {
+            background: #0056b3;
+        }
+
+        input[type="file"] {
+            padding: 8px;
+            cursor: pointer;
+            background: #333;
+            border-radius: 5px;
+        }
+
+        .preview-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex-grow: 1;
+        }
+
+        #imageCanvas {
+            border: 2px solid white;
+            border-radius: 8px;
+            width: 1080px;
+            height: 1080px;
+            background: black;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Ethereal Logoless Scenepack Cover Creator</h1>
+
+    <div class="editor-container">
+        <div class="controls">
+            <input type="file" id="imageUpload" accept="image/*">
+            <input type="file" id="logoUpload" accept="image/*">
+
+            <label>Scenepack Creator:</label>
+            <input type="text" id="creatorText" placeholder="MADE BY: NAME">
+
+            <label>Character Name:</label>
+            <input type="text" id="charText" placeholder="Character Name">
+
+            <label>Season/Type of Scenepack:</label>
+            <input type="text" id="seasonText" placeholder="Season 1/2/3">
+
+            <label>Quality:</label>
+            <input type="text" id="scpType" placeholder="Remux 1080p / Native 4K">
+
+            <label>FPS:</label>
+            <input type="text" id="fpsText" placeholder="24 FPS">
+
+            <label>Scenepack Length:</label>
+            <input type="text" id="timeText" placeholder="01:00:00">
+
+            <label>Text Size:</label>
+            <input type="number" id="textSize" value="40">
+
+            <label>Character Spacing (px):</label>
+            <input type="number" id="charSpacing" value="5">
+
+            <label>Blend Mode:</label>
+            <select id="blendMode">
+                <option value="normal">Normal</option>
+                <option value="difference">Difference</option>
+            </select>
+
+            <button onclick="downloadImage()">Download Image</button>
+            <button onclick="exportSettings()">Export Settings</button>
+            <input type="file" id="importSettings" accept=".json" style="margin-top: 10px;">
+        </div>
+
+        <div class="preview-container">
+            <canvas id="imageCanvas" width="1080" height="1080"></canvas>
+        </div>
+    </div>
+
+    <script>
+        let image = new Image();
+        let logo = new Image();
+        const canvas = document.getElementById("imageCanvas");
+        const ctx = canvas.getContext("2d");
+
+        const inputs = {
+            creatorText: document.getElementById("creatorText"),
+            charText: document.getElementById("charText"),
+            seasonText: document.getElementById("seasonText"),
+            scpType: document.getElementById("scpType"),
+            fpsText: document.getElementById("fpsText"),
+            timeText: document.getElementById("timeText"),
+            textSize: document.getElementById("textSize"),
+            charSpacing: document.getElementById("charSpacing"),
+            blendMode: document.getElementById("blendMode")
+        };
+
+        document.getElementById("imageUpload").addEventListener("change", function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    image.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        document.getElementById("logoUpload").addEventListener("change", function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    logo.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function drawOverlay() {
+            canvas.width = 1080;
+            canvas.height = 1080;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (image.src) {
+                ctx.drawImage(image, 0, 0, 1080, 1080);
+            }
+
+            const textSize = parseInt(inputs.textSize.value);
+            const charSpacing = parseInt(inputs.charSpacing.value);
+            ctx.font = `bold ${textSize}px Arial`;
+            ctx.fillStyle = "white"; 
+            ctx.globalCompositeOperation = inputs.blendMode.value;
+
+            function drawSpacedText(text, x, y, alignRight = false, centerAlign = false) {
+                let totalWidth = [...text].reduce((acc, letter) => acc + ctx.measureText(letter).width + charSpacing, 0) - charSpacing;
+                let startX = centerAlign ? x - totalWidth / 2 : (alignRight ? x - totalWidth : x);
+
+                [...text].forEach(letter => {
+                    ctx.fillText(letter, startX, y);
+                    startX += ctx.measureText(letter).width + charSpacing;
+                });
+            }
+
+            drawSpacedText(inputs.creatorText.value, canvas.width / 2, textSize + 20, false, true);
+
+            let xRight = canvas.width - 50;
+            let yStart = canvas.height - (textSize * 6);
+            let lineSpacing = textSize + 5;
+
+            const texts = [
+                inputs.charText.value,  
+                inputs.seasonText.value,
+                inputs.scpType.value,   
+                inputs.fpsText.value,    
+                inputs.timeText.value    
+            ];
+
+            texts.forEach((text, index) => {
+                let yPos = yStart + index * lineSpacing;
+                drawSpacedText(text, xRight, yPos, true);
+            });
+
+            if (logo.src) {
+                let logoSize = 250;
+                ctx.drawImage(logo, 50, canvas.height - logoSize - 50, logoSize, logoSize);
+            }
+
+            ctx.globalCompositeOperation = "source-over";
+        }
+
+        image.onload = drawOverlay;
+        logo.onload = drawOverlay;
+        document.querySelectorAll("input, select").forEach(input => {
+            input.addEventListener("input", drawOverlay);
+        });
+
+        function downloadImage() {
+            const link = document.createElement("a");
+            link.href = canvas.toDataURL("image/png");
+            link.download = "overlay_image.png";
+            link.click();
+        }
+
+        function exportSettings() {
+            const settings = {};
+            for (let key in inputs) {
+                settings[key] = inputs[key].value;
+            }
+            const blob = new Blob([JSON.stringify(settings, null, 2)], { type: "application/json" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "editor_settings.json";
+            link.click();
+        }
+
+        document.getElementById("importSettings").addEventListener("change", function (event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    try {
+                        const settings = JSON.parse(e.target.result);
+                        for (let key in settings) {
+                            if (inputs[key]) {
+                                inputs[key].value = settings[key];
+                            }
+                        }
+                        drawOverlay();
+                    } catch (err) {
+                        alert("Invalid settings file");
+                    }
+                };
+                reader.readAsText(file);
+            }
+        });
+    </script>
+
+</body>
+</html>
